@@ -6,8 +6,8 @@ pipeline {
         DOCKER_USERNAME = "thesanketpawar"
         IMAGE_NAME      = "flask-app"
         NAMESPACE       = "demo"
-        DEPLOYMENT      = "flask-deployment"
-        CONTAINER       = "flask"
+        DEPLOYMENT      = "flask-app"
+        CONTAINER       = "flask-app"
         IMAGE_TAG       = "${BUILD_NUMBER}"
     }
 
