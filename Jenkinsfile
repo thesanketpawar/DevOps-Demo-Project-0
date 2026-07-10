@@ -5,10 +5,11 @@ pipeline {
     environment {
         DOCKER_USERNAME = "thesanketpawar"
         IMAGE_NAME      = "flask-app"
+        IMAGE_TAG       = "${BUILD_NUMBER}"
+
         NAMESPACE       = "demo"
         DEPLOYMENT      = "flask-app"
         CONTAINER       = "flask-app"
-        IMAGE_TAG       = "${BUILD_NUMBER}"
     }
 
     options {
@@ -27,7 +28,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image..."
+                echo "Building Docker Image..."
 
                 sh """
                 docker build \
@@ -58,8 +59,7 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-
-                echo "Pushing image to Docker Hub..."
+                echo "Pushing Docker Image..."
 
                 sh """
                 docker push ${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}
@@ -67,44 +67,18 @@ pipeline {
             }
         }
 
-        stage('Check Namespace') {
-
+        stage('Deploy to Kubernetes') {
             steps {
 
-                script {
+                echo "Applying Kubernetes manifests..."
 
-                    def exists = sh(
-                        script: "kubectl get namespace ${NAMESPACE} --ignore-not-found",
-                        returnStdout: true
-                    ).trim()
+                sh """
+                kubectl apply -f kubernetes/namespace.yml
+                kubectl apply -f kubernetes/deployment.yml
+                kubectl apply -f kubernetes/service.yml
+                """
 
-                    if (!exists) {
-
-                        echo "Namespace not found. First deployment."
-
-                        sh """
-                        kubectl apply -f kubernetes/namespace.yml
-                        kubectl apply -f kubernetes/deployment.yml
-                        kubectl apply -f kubernetes/service.yml
-                        """
-
-                    } else {
-
-                        echo "Namespace already exists."
-
-                    }
-
-                }
-
-            }
-
-        }
-
-        stage('Update Deployment Image') {
-
-            steps {
-
-                echo "Updating deployment image..."
+                echo "Updating Deployment Image..."
 
                 sh """
                 kubectl set image deployment/${DEPLOYMENT} \
@@ -113,14 +87,10 @@ pipeline {
                 """
 
             }
-
         }
 
         stage('Verify Rollout') {
-
             steps {
-
-                echo "Waiting for rollout..."
 
                 sh """
                 kubectl rollout status deployment/${DEPLOYMENT} \
@@ -128,20 +98,18 @@ pipeline {
                 """
 
             }
-
         }
 
-        stage('Verify Pods') {
-
+        stage('Verify Deployment') {
             steps {
 
                 sh """
-                kubectl get pods -n ${NAMESPACE}
+                kubectl get deployments -n ${NAMESPACE}
+                kubectl get pods -o wide -n ${NAMESPACE}
                 kubectl get svc -n ${NAMESPACE}
                 """
 
             }
-
         }
 
     }
@@ -149,25 +117,21 @@ pipeline {
     post {
 
         success {
-
             echo "Application deployed successfully."
-
         }
 
         failure {
-
             echo "Pipeline failed."
-
         }
 
         always {
 
-            echo "Cleaning unused Docker images..."
+            echo "Cleaning Docker images..."
 
-            sh "docker image prune -f"
+            sh """
+            docker image prune -f
+            """
 
         }
-
     }
-
 }
