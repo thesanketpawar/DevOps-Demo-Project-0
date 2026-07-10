@@ -1,0 +1,6 @@
+aws_region    = "ap-south-1"
+environment   = "dev"
+project_name  = "DevOps-Demo-Project-0"
+instance_type = "t3.small"
+key_name      = "employee-devops-key"
+ami_id        = "ami-01971107641e9b67d"
